@@ -1,0 +1,141 @@
+- Meta : [[Deployer implementer AI]]
+- ------------------------------------------------
+-
+-
+- A lire
+	- Base sur l'histoire des endpoint
+		- https://medium.datadriveninvestor.com/pytorch-deep-learning-nanodegree-deploying-a-model-b2a7f0ac0685
+- Refactorer avec FastAPI sur Cloud Run ,  plutôt que FLASK et puis ensuite avec TF sur AI predict (cf plus bas)sera mieux et plus facile à tester en plus ...
+	- https://chatbotslife.com/deploying-transformer-models-1350876016f
+	- https://dev.to/meseta/flask-vs-fastapi-first-impressions-1bnm
+	-
+- Construire l'image via le [[docker]]
+	- Tips & tricks sur docker pour cleaner et pour builder sur une autre platforme
+		- de temps en temps : il faut reset the cache ; docker builder prune
+		- https://www.docker.com/blog/multi-arch-images/
+		- exit code 137 : en fait pas assez de mémoire il faut passer à 4 et augmenter le swap
+		- https://jaimyn.com.au/how-to-build-multi-architecture-docker-images-on-an-m1-mac/
+	- En local
+		- https://medium.datadriveninvestor.com/build-and-deploy-your-machine-learning-application-with-docker-f6ec5acdf2ff
+		- docker build -t jp:testgpt .
+		- docker run --name theGenApp -p8080:8080 jp:testgpt
+	- pr la mettre dans un bucker
+		- au final
+			- `PROJECT_ID=$(gcloud config get-value project)`
+			- `DOCKER_IMG2="gcr.io/"$PROJECT_ID"/homer-docker:v1"`
+			- `docker buildx build --platform linux/amd64  --push -t $DOCKER_IMG2 .`
+		- les problèmes que j'ai eu
+			- sur le cloud:  zarbi
+			- sur le push cloud : en fait j'étais pas sur la bonne architecture, pas assez de mémoire sur le docker buildx
+		- Principe générique
+			- étape A : Build une image docker
+			- étape B : la passer dans le registry
+			- étape C : executer sur le cloud
+			- V1 c'est je build locale et je passe dans le registry sur B
+			- V2 c'est je build tout dans le cloud
+		- Solution cloud marche pas now
+			- Configure Docker for Google Cloud: gcloud auth configure-docker
+			- gcloud config set run/region "europe-west1"
+			- ```shell
+			- PROJECT_ID=$(gcloud config get-value project)
+			- LOCATIONGCP="europe-west1"
+			- DOCKER_DESC="homer ministories"
+			- DOCKER_REPO="homer-repo-arti"
+			- DOCKER_IMG="homer-image:v1"
+			-
+			- ```
+			- créer un dépot docker ds Artefact Registry et vérifier
+				- gcloud artifacts repositories create $DOCKER_REPO --repository-format=docker  --location=$LOCATIONGCP  --description=$DOCKER_DESC
+				- gcloud artifacts repositories list
+			- Build
+				- BUILDTAG=$LOCATIONGCP"-docker.pkg.dev/"$PROJECT_ID"/"$DOCKER_REPO"/"$DOCKER_IMG
+				- gcloud builds submit --tag $BUILDTAG
+					- ne marche pas car problème de libtinfo ... je sais pas pourquoi !
+			- Run run deploy ...
+	-
+- Utilisation de Cloud Run
+	- j'ai utilisé ce code [[2021-03-22]]
+		- https://medium.datadriveninvestor.com/deploy-machine-learning-model-in-google-cloud-using-cloud-run-6ced8ba52aac
+		- Commentaire : il faut bien faire attention à prendre le port FLASK dans port = int plutôt que direct 8080
+	- Probleme de cold start :
+		- on peut faire un scheduler ou mettre une instance min :
+			- https://medium.com/google-cloud/3-solutions-to-mitigate-the-cold-starts-on-cloud-run-8c60f0ae7894
+- Pour créer une instance google cloud VM et fine tuner un modèle [[GPT2]] très large
+	- ```javascript
+	- ou bien on essaye
+	-
+	- https://docs.aitextgen.io/tutorials/generate_1_5b/
+	-
+	-
+	- git clone https://github.com/Xirider/finetune-gpt2xl.git
+	- chmod -R 777 finetune-gpt2xl/
+	- cd finetune-gpt2xl
+	- pip install -r requirements.txt
+	-
+	- et ensuite
+	-
+	- deepspeed --num_gpus=1 run_clm.py \
+	- --deepspeed ds_config.json \
+	- --model_name_or_path gpt2-xl \
+	- --train_file train.csv \
+	- --validation_file validation.csv \
+	- --do_train \
+	- --do_eval \
+	- --fp16 \
+	- --overwrite_cache \
+	- --evaluation_strategy="steps" \
+	- --output_dir finetuned \
+	- --eval_steps 200 \
+	- --num_train_epochs 1 \
+	- --gradient_accumulation_steps 2 \
+	- --per_device_train_batch_size 8
+	-
+	- 17minutes sur V100
+	-
+	- ALTERNATIVE DU KAGGLE :
+	- !python [[transformers]]rs]]rs]]rs]]/examples/run_language_modeling.py \
+	- --model_type=gpt2 \
+	- --model_name_or_path=gpt2-medium \
+	- --per_gpu_train_batch_size=4 \
+	- --gradient_accumulation_steps=2 \
+	- --fp16 \
+	- --fp16_opt_level=O2 \
+	- --block_size=300 \
+	- --do_train \
+	- --train_data_file=/kaggle/working/valid.wp_combined \
+	- --num_train_epochs=1 \
+	- --do_eval \
+	- --eval_data_file=/kaggle/working/test.wp_combined \
+	- --output_dir=output \
+	- --save_total_limit=1 \
+	- --save_steps=5000 \
+	- --cache_dir=output \
+	- --overwrite_cache \
+	- --overwrite_output_dir
+	- ```
+- Autres solutions
+	- Le mieux semble d'utiliser AI prediction avec un modèle exporté TensorFlow :)
+		- https://cloud.google.com/ai-platform/prediction/pricing#prediction-prices
+	- Sur une VM ou compute Engine
+		- [[10 Minutes to Deploying a Deep Learning Model on Google Cloud Platform]]
+		- version AWS EC2
+			- https://medium.datadriveninvestor.com/dockerizing-and-hosting-your-flask-web-app-rest-api-on-aws-ec2-9f9c189bf563
+			- Docker puis envoi sur AWS https://medium.datadriveninvestor.com/dockerize-and-deploy-your-machine-learning-application-on-aws-e2537bd3df21
+- Automatiser le déploiement
+	- avec git hub actions
+		- https://dev.to/pcraig3/quickstart-continuous-deployment-to-google-cloud-run-using-github-actions-fna
+		- probablement mieux que Jenkins
+			- https://towardsdatascience.com/automating-data-science-projects-with-jenkins-8e843771aa02
+			- https://blog.bitsrc.io/github-actions-or-jenkins-making-the-right-choice-for-you-9ac774684c8
+	- Utiliser Docker sur github
+		- https://docs.github.com/en/packages/guides/pushing-and-pulling-docker-images
+	- avec Spotty
+		- https://spotty.cloud/index.html
+		- https://towardsdatascience.com/how-to-train-deep-learning-models-on-aws-spot-instances-using-spotty-8d9e0543d365
+- Autres idées
+	- ONYX runtime pour accélérer :
+		- https://cloudblogs.microsoft.com/opensource/2020/08/24/pytorch-gpt-2-fine-tuning-onnx-runtime-speedup-training-time
+		- https://github.com/microsoft/onnxruntime-training-examples/tree/master/huggingface-gpt2
+		- https://medium.com/microsoftazure/faster-and-smaller-quantized-nlp-with-hugging-face-and-onnx-runtime-ec5525473bb7
+		-
+-

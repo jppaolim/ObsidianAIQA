@@ -1,0 +1,89 @@
+---
+title:   PKM
+created: 2020-10-14
+---
+- Meta :  [[Knowledge]]  
+- Summary :  que faire pour manager la knowledge
+
+- ------------------------------------------------ 
+- [[Knowledge]] 
+    - Idées Générique
+        - https://organisologie.com/workflowy/
+        - https://workflowy.zendesk.com/hc/en-us/community/posts/360072806311-When-did-they-add-Mirror-Links-That-s-an-absolute-God-send-
+        - 1 bon System : https://organisologie.com/prise-de-note/
+- Système pour prendre des notes
+    - https://lawsonblake.com/smart-notes-sonke-ahrens/
+        - Généralités :
+            - Ce qui est vraiment intéressant c'est le contexte de la note, histoire d'éviter d'avoir des notes perdues:  on veut retrouver la knowledge 
+            - du coup on peut faire un cache, un répertoire, ou bien se débrouiller pour que ça pop up au bon moment
+            - >“In the old system, the question is: Under which topic do I store this note? In the new system, the question is: In which context will I want to stumble upon it again?”
+        - soutient l'idée que **les idées doivent être attachées à des parents, ou des contextes, plutôt qu'avoir des tables des matières**. Le backlinking est complètement clef.  [[WisdomNuggets]]
+        - Méthode 
+            - Collecte
+            - > The goal is not to collect as many notes as possible, but to develop ideas, arguments, and discussions over time. This step is what separates the serious scholar from the casual note-taker.
+            - > Here are some questions you can ask yourself for deciding what should become a permanent note:
+            - __Does the new information contradict, correct, support, or add to what you already know?__
+            - __Can you combine ideas to generate something new?__
+            - __What questions are triggered by these new ideas
+            - ?__
+
+            - Ecriture 
+            - > Write your permanent notes as if you were writing for someone else. That means using full sentences, disclosing your sources, making references, and trying to be as precise and brief as possible. Once you have created your permanent notes, throw away (or delete) your fleeting notes from step one and file your literature notes from step two into your slip-box.
+- Les systèmes de classement
+    - Systèmes PARA : 
+        - projects 
+        - areas responsible 
+        - ressources  
+        - archive
+    - 
+- Les outils par objectifs  
+    - capturer des articles 
+        - Pocket 
+        - Insta paper 
+        - Evernote
+        - Notion
+    - écrire 
+        - Long Form  : scrivener 
+        - Short
+            - Ulysses (reference - mais dataB)
+            - Bear (dataB) 
+            - simplenote (dataB ?)
+            - avec TXT FILES :  
+                - theArchive 	 
+                - TXT FILES + Mobiles  : iAwriter (utilise des txt files)
+                - sinon 1writer  ? Byword ? Editorial ? 
+    - Organiser 
+        - tools 
+            - A essayer
+                - [[Dynalist]]
+                    - https://www.youtube.com/watch?v=8VCcVM7m2Es
+                    - 
+            - Essayé
+                - [[Obsidian]] 
+                    - + : fonctionne sur md normal, fonctionne en local, gratuit
+                    - - : pas de version mobile , n'est pas un outliner 
+                    - si c'est pas un outliner, ça veut dire que je peux pas modifier la To do sans aller dans la page To do 
+                - [[Workflowy]]
+                    - + : mobile, pas cher, joli, plein de features
+                    - - : le concept de one file est très perturbant 
+                    - avec [[Roam research]] chaque jour je note des choses en continu et ça enrichit les autres pages. Là je dois recopier plusieurs fois en "virtual mirror" les pages, c'est bizarre  
+                    - https://organisologie.com/workflowy/
+                - [[Roam research]]
+                    - pour l'instant le meilleur
+            - Thinktool est en bêta  
+    - All in one
+        - evernote
+        - notion
+        - bear
+        - devonthink ?
+    - Other tools
+        - Coda : a l’air compliqué
+        - Athens : MVP 
+            - https://www.notion.so/MVP-Update-Funding-and-Why-I-Started-Athens-e68822f0c3654660ae621cdcbf932bc4 :  sorte de MVP 
+        - Liste de tools 
+            - https://www.notion.so/Artificial-Brain-Networked-notebook-app-a131b468fc6f43218fb8105430304709
+    - https://nesslabs.com/how-to-choose-the-right-note-taking-app
+    - 
+- Zettelkasten
+- Quelques idées de développement : 
+    -

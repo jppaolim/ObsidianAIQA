@@ -14,7 +14,7 @@ from langchain.text_splitter import CharacterTextSplitter, MarkdownTextSplitter,
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import Chroma, FAISS 
 
 from langchain.prompts import PromptTemplate
 from langchain.prompts.chat import (
@@ -22,6 +22,8 @@ from langchain.prompts.chat import (
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
+from langchain.vectorstores.base import VectorStoreRetriever
+ 
 
 from langchain.chains import RetrievalQA
 from langchain.llms import OpenAI
@@ -37,7 +39,7 @@ LLM = os.environ.get("MODEL")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 PERSIST_DIRECTORY = os.environ.get("PERSIST_DIRECTORY")
 DOC_DIRECTORY = os.environ.get("DOC_DIRECTORY")
-PRINT_SOURCE = False
+PRINT_SOURCE = True
 INSTRUCT_MODEL=os.environ.get("INSTRUCT_MODEL")
 ### instructor model is trained on 512 token so roughly up to 2K character. So setting at 1500 we should be good.
 # then if we pass 4 documents to the chain it should be OK.   
@@ -66,7 +68,7 @@ def embeddings_function():
     return Instructembedding
 
 
-def create_or_load_db():
+def create_or_load_db_chroma():
 
     dbfileone = "./" + PERSIST_DIRECTORY + "/chroma-collections.parquet"
     dbfiletwo = "./" + PERSIST_DIRECTORY + "/chroma-embeddings.parquet"
@@ -103,60 +105,83 @@ def create_or_load_db():
     else:
         db = Chroma(persist_directory=PERSIST_DIRECTORY, embedding_function=embeddings_function())
     
-    return db 
-
-
-def main():
-
-    db = create_or_load_db()
     db.persist()
 
-    querybase = db.as_retriever(search_kwargs={"k": 1})
+    return db 
 
-    ###  prepare  
+def create_or_load_db_faiss():
+    faissfile = "./" + PERSIST_DIRECTORY + "/faiss_index" 
 
-    #callbacks = [StreamingStdOutCallbackHandler()]
+    text_splitter = MarkdownTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=OVERLAP)
+
+    documents = load_documents()
+
+    start_time = time.time()
+    texts = text_splitter.split_documents(documents)
+
+    elapsed_time = time.time() - start_time
+
+    textspd = pd.Series(map(lambda x:len(x.page_content), texts))
+    stats = textspd.describe()
+    print(stats)
+
+    print(f"Loaded {len(documents)} documents from {DOC_DIRECTORY}")
+    print(f"Split into {len(texts)} chunks of text (max. {CHUNK_SIZE} char each)")
+    print(f"it took  {elapsed_time} seconds to process ")
+
+    if not (os.path.exists(faissfile)):
+
+
+        start_time = time.time()
+        
+        db = FAISS.from_documents(texts, embeddings_function())
+        
+        elapsed_time = time.time() - start_time
+        print(f"it took  {elapsed_time} seconds to create the database with indicated embeddings ")
+        
+        db.save_local(faissfile)
+    else:
+        db = FAISS.load_local(faissfile, embeddings_function()) 
+    
+    return db 
+
+def run_query(thequery : str):
+
+
+    return
+
+def customize_prompt():
 
     system_template = """You act as an helpful research assistant. The user will ask you a question. Use you own knowledge but also incorporate the following pieces of context to help you answer in the most complete and detailed way.  Make sure your answer is fluid, consistent, logicial and detailed.   
-    ----------------
-    {context}"""
+        ----------------
+        {context}"""
     
     messages = [
-        SystemMessagePromptTemplate.from_template(system_template),
-        HumanMessagePromptTemplate.from_template("{question}"),
-    ]
+            SystemMessagePromptTemplate.from_template(system_template),
+            HumanMessagePromptTemplate.from_template("{question}"),
+        ]
 
     PROMPT = ChatPromptTemplate.from_messages(messages)
-
-    chain_type_kwargs = {"prompt": PROMPT}
-    #chain_type_kwargs = {}
     
-    qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=1024, verbose=True), chain_type="stuff", retriever=querybase, return_source_documents=True, verbose = True, chain_type_kwargs=chain_type_kwargs)
-    qa.combine_documents_chain.verbose = True
-    
-    #qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="refine", retriever=querybase, return_source_documents=PRINT_SOURCE)
+    return PROMPT
 
-    # ****************  Retrieve relevant documents
+def go_and_interact(qa : RetrievalQA):
 
     # Interactive questions and answers
     while True:
+
         query = input("\nEnter a query: ")
         if query == "exit":
             break
         
-        # Get the answer from the chain
-        #res = qa(query)
-        qa.run(query)    
+        res = qa(query)
+        #qa.run(query)    
 
         if PRINT_SOURCE:
              answer, docs = res['result'], res['source_documents']
         else:
             answer  = res['result']  
 
-        # Print the result
-        print("\n\n> Question:")
-        print(query)
-        print("\n> Answer:")
         print(answer)
         
         if PRINT_SOURCE:
@@ -165,7 +190,47 @@ def main():
                 print("\n> " + document.metadata["source"] + ":")
                 print(document.page_content)
 
+    return
+
+def go_and_getrelevantDocs(querybase :  VectorStoreRetriever, query : str):
+    relevantDocs =querybase.get_relevant_documents(query)
+    for rdoc in relevantDocs:
+        print("-------------------------------")
+        print(rdoc.page_content)
+        print("\n")
+    return
+
+def main():
+
+    #db = create_or_load_db_chroma()
+    db = create_or_load_db_faiss()
+
+
+    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.8})
+    #querybase = db.as_retriever(search_type="similarity", search_kwargs={"k":3})
+
+
+    ###  prepare  
+
+    #callbacks = [StreamingStdOutCallbackHandler()]
+
+    PROMPT=customize_prompt() 
+
+    chain_type_kwargs = {"prompt": PROMPT}
+    
+    qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=1024, verbose=True), chain_type="stuff", retriever=querybase, return_source_documents=True, verbose = True, chain_type_kwargs=chain_type_kwargs)
+    qa.combine_documents_chain.verbose = True
+    #qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="refine", retriever=querybase, return_source_documents=PRINT_SOURCE)
+
+    #pour aller interagir
+    go_and_interact(qa)   
+    
+    #go_and_getrelevantDocs(querybase, "Who is Geoffrey hilton")
+    #go_and_getrelevantDocs(querybase, "should we be afraid of AI ?")
+
+
     db = None
+    exit
 
 
 if __name__ == "__main__":

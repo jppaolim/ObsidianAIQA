@@ -1,5 +1,9 @@
-# Documents
+# Documents  and database
 Ressources/
+.chroma/
+db/
+db/*
+
 
 # OSX
 .DS_STORE
@@ -7,9 +11,6 @@ Ressources/
 # Models
 models/
 
-# Local Chroma db
-.chroma/
-db/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

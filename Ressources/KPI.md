@@ -1,6 +1,0 @@
-- 
-- #mywork 
-- 
-- Comment choisir un KPI principal ?
-	- https://future.a16z.com/north-star-metrics/
-	- Il y a 6 métriques principales qui dépendent du type de business qu'on a : croissance du revenu, market share, consommation , engagement , coût de acquisition , user expérience 

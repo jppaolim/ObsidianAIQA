@@ -209,7 +209,7 @@ def main():
 
     db = create_or_load_db_faiss()
 
-    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.5})
+    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.7})
 
 
     PROMPT=customize_prompt() 
@@ -217,7 +217,7 @@ def main():
     chain_type_kwargs = {"prompt": PROMPT} 
     qa = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True), chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
 
-    qb = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True), chain_type="refine", retriever=querybase)
+    qb = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.7, max_tokens=2048, verbose=True), chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
 
     #pour aller interagir
     #go_and_interact(qa)   

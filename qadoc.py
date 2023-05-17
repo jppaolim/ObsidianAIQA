@@ -27,6 +27,8 @@ from langchain.vectorstores.base import VectorStoreRetriever
 
 from langchain.chains import RetrievalQA
 from langchain.llms import OpenAI
+
+from langchain.chat_models import PromptLayerChatOpenAI
 from langchain.chat_models import ChatOpenAI
 
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
@@ -37,6 +39,7 @@ load_dotenv()
 
 LLM = os.environ.get("MODEL")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
+PROMPTLAYER_API_KEY=os.environ.get("PROMPTLAYER_API_KEY")
 PERSIST_DIRECTORY = os.environ.get("PERSIST_DIRECTORY")
 DOC_DIRECTORY = os.environ.get("DOC_DIRECTORY")
 PRINT_SOURCE = True
@@ -66,7 +69,6 @@ def embeddings_function():
         model_name=INSTRUCT_MODEL, embed_instruction=embed_instruction, query_instruction=query_instruction)
 
     return Instructembedding
-
 
 def create_or_load_db_chroma():
 
@@ -145,14 +147,9 @@ def create_or_load_db_faiss():
     
     return db 
 
-def run_query(thequery : str):
-
-
-    return
-
 def customize_prompt():
 
-    system_template = """You act as an helpful research assistant. The user will ask you a question. Use you own knowledge but also incorporate the following pieces of context to help you answer in the most complete and detailed way.  Make sure your answer is fluid, consistent, logicial and detailed.   
+    system_template = """You act as an helpful and insightful research assistant. Use you own knowledge and incorporate the most relevant points of the following context to write a nuanced, well argumented and credible anwer to the user question.
         ----------------
         {context}"""
     
@@ -202,36 +199,38 @@ def go_and_getrelevantDocs(querybase :  VectorStoreRetriever, query : str):
 
 def main():
 
-    #db = create_or_load_db_chroma()
     db = create_or_load_db_faiss()
 
+    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.5})
 
-    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.8})
-    #querybase = db.as_retriever(search_type="similarity", search_kwargs={"k":3})
-
-
-    ###  prepare  
-
-    #callbacks = [StreamingStdOutCallbackHandler()]
 
     PROMPT=customize_prompt() 
 
-    chain_type_kwargs = {"prompt": PROMPT}
-    
-    qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=1024, verbose=True), chain_type="stuff", retriever=querybase, return_source_documents=True, verbose = True, chain_type_kwargs=chain_type_kwargs)
-    qa.combine_documents_chain.verbose = True
-    #qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="refine", retriever=querybase, return_source_documents=PRINT_SOURCE)
+    chain_type_kwargs = {"prompt": PROMPT} 
+    qa = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True), chain_type="stuff", retriever=querybase, return_source_documents=True, verbose = True, chain_type_kwargs=chain_type_kwargs)
 
     #pour aller interagir
     go_and_interact(qa)   
-    
-    #go_and_getrelevantDocs(querybase, "Who is Geoffrey hilton")
-    #go_and_getrelevantDocs(querybase, "should we be afraid of AI ?")
-
 
     db = None
     exit
 
+# Not used anymoore
+def unusedcode():
+    #db = create_or_load_db_chroma()
+    #querybase = db.as_retriever(search_type="similarity", search_kwargs={"k":3})
+
+    #callbacks = [StreamingStdOutCallbackHandler()]
+
+    #go_and_getrelevantDocs(querybase, "Who is Geoffrey hilton")
+    #go_and_getrelevantDocs(querybase, "should we be afraid of AI ?")
+
+    #qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="refine", retriever=querybase, return_source_documents=PRINT_SOURCE)
+
+
+    return
+
 
 if __name__ == "__main__":
     main()
+

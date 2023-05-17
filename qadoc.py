@@ -42,12 +42,12 @@ OPENAI_KEY = os.environ.get("OPENAI_KEY")
 PROMPTLAYER_API_KEY=os.environ.get("PROMPTLAYER_API_KEY")
 PERSIST_DIRECTORY = os.environ.get("PERSIST_DIRECTORY")
 DOC_DIRECTORY = os.environ.get("DOC_DIRECTORY")
-PRINT_SOURCE = True
+PRINT_SOURCE = False
 INSTRUCT_MODEL=os.environ.get("INSTRUCT_MODEL")
 ### instructor model is trained on 512 token so roughly up to 2K character. So setting at 1500 we should be good.
 # then if we pass 4 documents to the chain it should be OK.   
 CHUNK_SIZE=int(os.environ.get("CHUNK_SIZE"))
-OVERLAP = 32
+OVERLAP = 16
 
 
 # ****************  Document Loader
@@ -189,6 +189,14 @@ def go_and_interact(qa : RetrievalQA):
 
     return
 
+def go_and_answer(query: str, qa : RetrievalQA):
+    res = qa(query)
+    answer  = res['result']  
+    print(answer)
+    print("\n")
+    
+    return
+
 def go_and_getrelevantDocs(querybase :  VectorStoreRetriever, query : str):
     relevantDocs =querybase.get_relevant_documents(query)
     for rdoc in relevantDocs:
@@ -207,11 +215,20 @@ def main():
     PROMPT=customize_prompt() 
 
     chain_type_kwargs = {"prompt": PROMPT} 
-    qa = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True), chain_type="stuff", retriever=querybase, return_source_documents=True, verbose = True, chain_type_kwargs=chain_type_kwargs)
+    qa = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True), chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
+
+    qb = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True), chain_type="refine", retriever=querybase)
 
     #pour aller interagir
-    go_and_interact(qa)   
+    #go_and_interact(qa)   
 
+    #ou pr répondre à la question
+    go_and_answer("Should we be afraid of AI ?", qa)
+    go_and_answer("Should we be afraid of AI ?", qb)
+   
+    go_and_answer("Please build a scenario of how an AI could take over the world. Brainstorm about mitigation tactics.", qa)
+    go_and_answer("Please build a scenario of how an AI could take over the world. Brainstorm about mitigation tactics.", qb)
+   
     db = None
     exit
 
@@ -226,7 +243,7 @@ def unusedcode():
     #go_and_getrelevantDocs(querybase, "should we be afraid of AI ?")
 
     #qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="refine", retriever=querybase, return_source_documents=PRINT_SOURCE)
-
+    #qa = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True), chain_type="stuff", retriever=querybase, return_source_documents=True, verbose = True, chain_type_kwargs=chain_type_kwargs)
 
     return
 

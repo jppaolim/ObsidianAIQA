@@ -1,4 +1,5 @@
 OPENAI_KEY=sk-XXXX
 PERSIST_DIRECTORY=db
 MODEL=gpt-3.5-turbo
-DOCDIRECTORY=Ressources
+DOC_DIRECTORY=Ressources
+INSTRUCT_MODEL=hkunlp/instructor-large

@@ -3,11 +3,14 @@ import re
 import time
 import requests
 
+import pandas as pd
+
 from dotenv import load_dotenv
 
 from langchain.document_loaders import TextLoader, DirectoryLoader, UnstructuredMarkdownLoader
 from langchain.text_splitter import CharacterTextSplitter, MarkdownTextSplitter, RecursiveCharacterTextSplitter
 
+#instructor model : https://arxiv.org/pdf/2212.09741.pdf
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 
 
@@ -35,23 +38,28 @@ OPENAI_KEY = os.environ.get("OPENAI_KEY")
 PERSIST_DIRECTORY = os.environ.get("PERSIST_DIRECTORY")
 DOC_DIRECTORY = os.environ.get("DOC_DIRECTORY")
 PRINT_SOURCE = False
-INSTRUCT_MODEL=os.environ.get("INSTRUCT_MODEL")  
-
+INSTRUCT_MODEL=os.environ.get("INSTRUCT_MODEL")
+### instructor model is trained on 512 token so roughly up to 2K character. So setting at 1500 we should be good.
+# then if we pass 4 documents to the chain it should be OK.   
+CHUNK_SIZE=int(os.environ.get("CHUNK_SIZE"))
+OVERLAP = 32
 
 
 # ****************  Document Loader
 
 def load_documents():
+    docdirectory = "./" + DOC_DIRECTORY + "/"
+
     loader = DirectoryLoader(
-        DOC_DIRECTORY, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader)
+        docdirectory, glob="**/*.md", loader_cls=UnstructuredMarkdownLoader)
     return loader.load()
 
 # ****************  Create or Load embeddings
 
 
 def embeddings_function():
-    embed_instruction = "Represent the sentence for retrieval: "
-    query_instruction = "Represent the question for retrieving supporting documents to answer it : "
+    embed_instruction = "Represent the Wikipedia document for retrieval: "
+    query_instruction = "Represent the Wikipedia question for retrieving supporting documents : "
     Instructembedding = HuggingFaceInstructEmbeddings(
         model_name=INSTRUCT_MODEL, embed_instruction=embed_instruction, query_instruction=query_instruction)
 
@@ -63,20 +71,25 @@ def create_or_load_db():
     dbfileone = "./" + PERSIST_DIRECTORY + "/chroma-collections.parquet"
     dbfiletwo = "./" + PERSIST_DIRECTORY + "/chroma-embeddings.parquet"
 
+    text_splitter = MarkdownTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=OVERLAP)
+
+    documents = load_documents()
+
+    start_time = time.time()
+    texts = text_splitter.split_documents(documents)
+
+    elapsed_time = time.time() - start_time
+
+    textspd = pd.Series(map(lambda x:len(x.page_content), texts))
+    stats = textspd.describe()
+    print(stats)
+
+    print(f"Loaded {len(documents)} documents from {DOC_DIRECTORY}")
+    print(f"Split into {len(texts)} chunks of text (max. {CHUNK_SIZE} char each)")
+    print(f"it took  {elapsed_time} seconds to process ")
+
     if not (os.path.exists(dbfileone) and os.path.exists(dbfiletwo)):
 
-        text_splitter = MarkdownTextSplitter(chunk_size=512, chunk_overlap=64)
-
-        documents = load_documents()
-
-        start_time = time.time()
-        texts = text_splitter.split_documents(documents)
-
-        elapsed_time = time.time() - start_time
-
-        print(f"Loaded {len(documents)} documents from {DOC_DIRECTORY}")
-        print(f"Split into {len(texts)} chunks of text (max. 512 char each)")
-        print(f"it took  {elapsed_time} seconds to process ")
 
         start_time = time.time()
         
@@ -98,13 +111,13 @@ def main():
     db = create_or_load_db()
     db.persist()
 
-    querybase = db.as_retriever()
+    querybase = db.as_retriever(search_kwargs={"k": 1})
 
     ###  prepare  
 
-    callbacks = [StreamingStdOutCallbackHandler()]
+    #callbacks = [StreamingStdOutCallbackHandler()]
 
-    system_template = """Use the following pieces of context to answer the users question. If you don't know the answer, just say that you don't know, don't try to make up an answer. 
+    system_template = """You act as an helpful research assistant. The user will ask you a question. Use you own knowledge but also incorporate the following pieces of context to help you answer in the most complete and detailed way.  Make sure your answer is fluid, consistent, logicial and detailed.   
     ----------------
     {context}"""
     
@@ -115,13 +128,13 @@ def main():
 
     PROMPT = ChatPromptTemplate.from_messages(messages)
 
-    #chain_type_kwargs = {"prompt": PROMPT}
-    chain_type_kwargs = {}
+    chain_type_kwargs = {"prompt": PROMPT}
+    #chain_type_kwargs = {}
     
-    #qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="stuff", retriever=querybase, return_source_documents=True, chain_type_kwargs=chain_type_kwargs)
+    qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=1024, verbose=True), chain_type="stuff", retriever=querybase, return_source_documents=True, verbose = True, chain_type_kwargs=chain_type_kwargs)
+    qa.combine_documents_chain.verbose = True
     
-    
-    qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="refine", retriever=querybase, return_source_documents=PRINT_SOURCE)
+    #qa = RetrievalQA.from_chain_type(llm=OpenAI(openai_api_key=OPENAI_KEY, temperature=0., max_tokens=512), chain_type="refine", retriever=querybase, return_source_documents=PRINT_SOURCE)
 
     # ****************  Retrieve relevant documents
 
@@ -132,7 +145,8 @@ def main():
             break
         
         # Get the answer from the chain
-        res = qa(query)    
+        #res = qa(query)
+        qa.run(query)    
 
         if PRINT_SOURCE:
              answer, docs = res['result'], res['source_documents']

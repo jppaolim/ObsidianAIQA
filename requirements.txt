@@ -9,6 +9,6 @@ sentence_transformers
 InstructorEmbedding
 pytesseract
 pdf2image
-unstructured
-dotenv
 llama-cpp-python
+unstructured
+python-dotenv

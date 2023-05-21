@@ -2,6 +2,7 @@ transformers
 langchain
 accelerate
 bitsandbytes
+chromadb
 beautifulsoup4
 openai
 tiktoken

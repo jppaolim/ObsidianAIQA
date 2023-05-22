@@ -12,3 +12,4 @@ pdf2image
 llama-cpp-python
 unstructured
 python-dotenv
+faiss-cpu

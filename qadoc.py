@@ -125,6 +125,21 @@ def customize_chat_prompt():
     
     return PROMPT
 
+def customize_chat_prompt_LLAMA():
+
+    prompt_template = """### Human : You act as an helpful and insightful research assistant. Use you own knowledge and incorporate the most relevant points of the following context to write a nuanced, well argumented and credible anwer to the question. Here is the context : 
+
+    {context}
+
+    Now is the question: {question}
+    ### Assistant :"""
+    PROMPT = PromptTemplate(
+    template=prompt_template, input_variables=["context", "question"]
+    )
+
+    
+    return PROMPT
+
 
 def go_and_interact(qa : RetrievalQA):
 
@@ -165,7 +180,7 @@ def go_and_answer(query: str, qa : RetrievalQA):
 def main():
 
     db = create_or_load_db_faiss()
-    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.7})
+    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":3, "lambda_mult":0.7})
 
     if LLMTYPE=="ChatGPT":
         PROMPT=customize_chat_prompt() 
@@ -176,12 +191,12 @@ def main():
         qb = RetrievalQA.from_chain_type(llm=PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.7, max_tokens=2048, verbose=True), chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
 
     elif LLMTYPE=="LLAMACPP":
-        llamamodel = LlamaCpp(model_path=MODEL_PATH, n_threads=6,  n_ctx=2048, max_tokens=2048, temperature = 0.7, top_k = 50, top_p=0.9, verbose=True)
+        llamamodel = LlamaCpp(model_path=MODEL_PATH, n_threads=6,  n_ctx=2048, max_tokens=512, temperature = 0.7, top_k = 50, top_p=0.9, verbose=True)
 
-        #PROMPT=customize_chat_prompt() 
-        chain_type_kwargs = {} 
+        PROMPT=customize_chat_prompt_LLAMA() 
+        chain_type_kwargs = {"prompt": PROMPT} 
         qa = RetrievalQA.from_chain_type(llm=llamamodel, chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
-        qb = RetrievalQA.from_chain_type(llm=llamamodel, chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
+        #qb = RetrievalQA.from_chain_type(llm=llamamodel, chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
 
     elif LLMTYPE=="GPT4ALL":
         gpt4allmodel = GPT4All(model=MODEL_PATH, n_threads=6,  n_ctx=2048, verbose=True)

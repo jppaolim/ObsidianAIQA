@@ -6,54 +6,49 @@ import requests
 import pandas as pd
 from dotenv import load_dotenv
 
+from langchain.llms import OpenAI, LlamaCpp
 
-from langchain.vectorstores import Chroma, FAISS 
-
-from langchain.prompts import PromptTemplate
+from langchain.chat_models import PromptLayerChatOpenAI
+from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
-from langchain.vectorstores.base import VectorStoreRetriever
- 
+
+from langchain.prompts import PromptTemplate
 
 from langchain.chains import RetrievalQA
-from langchain.llms import OpenAI, LlamaCpp, GPT4All
 
-from langchain.chat_models import PromptLayerChatOpenAI
-from langchain.chat_models import ChatOpenAI
-
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+# from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 # ****************  Load Environemnt
 
 load_dotenv()
 
-LLM = os.environ.get("MODEL")
-OPENAI_KEY = os.environ.get("OPENAI_KEY")
-PROMPTLAYER_API_KEY=os.environ.get("PROMPTLAYER_API_KEY")
-PERSIST_DIRECTORY = os.environ.get("PERSIST_DIRECTORY")
+## database
 DOC_DIRECTORY = os.environ.get("DOC_DIRECTORY")
 
-PRINT_SOURCE = (os.getenv('PRINT_SOURCE', 'False') == 'True')
-
+## embeddings parameter  >> instructor model : https://arxiv.org/pdf/2212.09741.pdf
 INSTRUCT_MODEL=os.environ.get("INSTRUCT_MODEL")
-### instructor model is trained on 512 token so roughly up to 2K character. So setting at 1500 we should be good.
- 
 CHUNK_SIZE=int(os.environ.get("CHUNK_SIZE"))
 OVERLAP = 16
+PERSIST_DIRECTORY = os.environ.get("PERSIST_DIRECTORY")
 
-BUILD_REFRESH_DB = (os.getenv('BUILD_REFRESH_DB', 'False') == 'True')
-
+## llm and API key 
 LLMTYPE=os.environ.get("LLMTYPE")
 MODEL_PATH=os.environ.get("MODEL_PATH")
+OPENAI_KEY = os.environ.get("OPENAI_KEY")
+PROMPTLAYER_API_KEY=os.environ.get("PROMPTLAYER_API_KEY")
+
+## parameters  
+PRINT_SOURCE = (os.getenv('PRINT_SOURCE', 'False') == 'True')
+BUILD_REFRESH_DB = (os.getenv('BUILD_REFRESH_DB', 'False') == 'True')
 
 
-# **************** Load embeddings instructor model : https://arxiv.org/pdf/2212.09741.pdf
 
+# ****************  Embeddings function 
 from langchain.embeddings import HuggingFaceInstructEmbeddings
-
 def embeddings_function():
     embed_instruction = "Represent the Wikipedia document for retrieval: "
     query_instruction = "Represent the Wikipedia question for retrieving supporting documents : "
@@ -62,18 +57,24 @@ def embeddings_function():
 
     return Instructembedding
 
-# ****************  Document Loader
+# ****************  Document Loader & Vector Store 
 
 from langchain.document_loaders import TextLoader, DirectoryLoader, UnstructuredMarkdownLoader
 from langchain.text_splitter import CharacterTextSplitter, MarkdownTextSplitter, RecursiveCharacterTextSplitter
 
+from langchain.vectorstores import FAISS 
+
+
 def create_or_load_db_faiss():
 
     faissfile = "./" + PERSIST_DIRECTORY + "/faiss_index" 
-    nog_present = not (os.path.exists(faissfile))
+    not_present = not (os.path.exists(faissfile))
 
 
-    if (nog_present or BUILD_REFRESH_DB):
+    if (not_present or BUILD_REFRESH_DB):
+        
+        os.remove(faissfile+"/*.*")
+        print("removed")
         text_splitter = MarkdownTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=OVERLAP)
         docdirectory = "./" + DOC_DIRECTORY + "/"
 
@@ -180,7 +181,7 @@ def go_and_answer(query: str, qa : RetrievalQA):
 def main():
 
     db = create_or_load_db_faiss()
-    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":3, "lambda_mult":0.7})
+    querybase = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.7})
 
     if LLMTYPE=="ChatGPT":
         PROMPT=customize_chat_prompt() 
@@ -198,23 +199,18 @@ def main():
         qa = RetrievalQA.from_chain_type(llm=llamamodel, chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
         #qb = RetrievalQA.from_chain_type(llm=llamamodel, chain_type="stuff", retriever=querybase, chain_type_kwargs=chain_type_kwargs)
 
-    elif LLMTYPE=="GPT4ALL":
-        gpt4allmodel = GPT4All(model=MODEL_PATH, n_threads=6,  n_ctx=2048, verbose=True)
-
-        #PROMPT=customize_chat_prompt() 
-        #chain_type_kwargs = {} 
-        qa = RetrievalQA.from_chain_type(llm=gpt4allmodel, chain_type="stuff", retriever=querybase)
-        #qb = RetrievalQA.from_chain_type(llm=gpt4allmodel, chain_type="stuff", retriever=querybase)
-
     else:
         print("Mistake in LLM")
         exit
 
-    go_and_answer("Should we be afraid of AI ?", qa)
+    #go_and_answer("Should we be afraid of AI ?", qa)
     #go_and_answer("Should we be afraid of AI ?", qb)
    
-    go_and_answer("Please build a scenario of how an AI could take over the world. Brainstorm about mitigation tactics.", qa)
+    #go_and_answer("Please build a scenario of how an AI could take over the world. Brainstorm about mitigation tactics.", qa)
     #go_and_answer("Please build a scenario of how an AI could take over the world. Brainstorm about mitigation tactics.", qb)
+
+    go_and_answer("Can we build a moat for an AI startup ?", qa)
+    
    
     db = None
     exit

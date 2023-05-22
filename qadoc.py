@@ -41,7 +41,7 @@ MODEL_PATH=os.environ.get("MODEL_PATH")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 PROMPTLAYER_API_KEY=os.environ.get("PROMPTLAYER_API_KEY")
 
-## parameters  
+## parameters  False unless excplicitly set to True 
 PRINT_SOURCE = (os.getenv('PRINT_SOURCE', 'False') == 'True')
 BUILD_REFRESH_DB = (os.getenv('BUILD_REFRESH_DB', 'False') == 'True')
 
@@ -67,14 +67,18 @@ from langchain.vectorstores import FAISS
 
 def create_or_load_db_faiss():
 
-    faissfile = "./" + PERSIST_DIRECTORY + "/faiss_index" 
-    not_present = not (os.path.exists(faissfile))
+    #see if we need to build 
+    faissfile1 = "./" + PERSIST_DIRECTORY + "/faiss_index/index.faiss" 
+    faissfile2 = "./" + PERSIST_DIRECTORY + "/faiss_index/index.pkl" 
+    missingfile = not (os.path.exists(faissfile1) and os.path.exists(faissfile2))
 
-
-    if (not_present or BUILD_REFRESH_DB):
+    if (missingfile or BUILD_REFRESH_DB):
         
-        os.remove(faissfile+"/*.*")
-        print("removed")
+        if os.path.exists(faissfile1):
+            os.remove(faissfile1)
+        if os.path.exists(faissfile2):
+            os.remove(faissfile2)
+
         text_splitter = MarkdownTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=OVERLAP)
         docdirectory = "./" + DOC_DIRECTORY + "/"
 

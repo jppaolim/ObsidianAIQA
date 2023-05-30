@@ -13,3 +13,4 @@ llama-cpp-python
 unstructured
 python-dotenv
 faiss-cpu
+promptlayer

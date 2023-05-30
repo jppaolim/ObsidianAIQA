@@ -1,0 +1,8 @@
+A chat between a curious student called USER and an insightful artificial intelligence assistant called ASSISTANT.
+USER : Hello, ASSISTANT.
+ASSISTANT : Hello. How may I help you today ? 
+USER : I have gathered following information that I will call context, read them carefully :
+{context}
+ASSISTANT : Thank you, I have read the context. How may I help you ?
+USER : Please use your knowledge and context if relevant to answer following query. Please provide detailed arguments. Here is the query : {question}
+ASSISTANT :

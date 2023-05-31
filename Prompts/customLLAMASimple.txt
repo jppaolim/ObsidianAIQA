@@ -1,0 +1,5 @@
+A chat between a curious student called USER and an insightful artificial intelligence assistant called ASSISTANT.
+USER : Hello, ASSISTANT.
+ASSISTANT : Hello. How may I help you today ? 
+USER : Please use your knowledge to answer following query. Please provide detailed arguments. Here is the query : {question}
+ASSISTANT :

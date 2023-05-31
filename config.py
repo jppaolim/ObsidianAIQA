@@ -20,6 +20,8 @@ MODEL_PATH=os.environ.get("MODEL_PATH")
 OPENAI_KEY = os.environ.get("OPENAI_KEY")
 PROMPTLAYER_API_KEY=os.environ.get("PROMPTLAYER_API_KEY")
 PROMPTFILE=os.environ.get("PROMPTFILE")
+PROMPTFILEHYDE=os.environ.get("PROMPTFILEHYDE")
+QATYPE=os.environ.get("QATYPE")
 
 ## parameters  False unless excplicitly set to True 
 PRINT_SOURCE = (os.getenv('PRINT_SOURCE', 'False') == 'True')

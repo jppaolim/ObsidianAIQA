@@ -15,6 +15,7 @@ from langchain.prompts.chat import (
 )
 
 from langchain.prompts import PromptTemplate
+from langchain.vectorstores import VectorStore
 
 from langchain.chains import RetrievalQA
 from langchain.chains import LLMChain, HypotheticalDocumentEmbedder
@@ -55,100 +56,63 @@ def customize_prompt(filepath):
             
     return PROMPT
 
-# ****************  Interact
+# ****************  Build Inputs from query 
 
-def go_and_interact(qa : RetrievalQA):
+def build_inputs(query : str, dbretriever : VectorStore):
+     
+    if LLMTYPE=="ChatGPT": inputsdict = {"query": query}
 
-    # Interactive questions and answers
-    while True:
-
-        query = input("\nEnter a query: ")
-        if query == "exit":
-            break
-        
-        res = qa(query)
-        #qa.run(query)    
-
-        if PRINT_SOURCE:
-             answer, docs = res['result'], res['source_documents']
+    elif LLMTYPE=="LLAMACPP": 
+ 
+        if QATYPE =="AUTO": 
+            inputsdict = {"query": query}
+        elif QATYPE=="MANUAL":   
+            context = dbretriever.get_relevant_documents(query)       
+            inputcontext=build_string_context(context)
+            inputsdict = {"context": inputcontext, "question": query}
         else:
-            answer  = res['result']  
-
-        print(answer)
-        
-        if PRINT_SOURCE:
-            # Print the relevant sources used for the answer
-            for document in docs:
-                print("\n> " + document.metadata["source"] + ":")
-                print(document.page_content)
-
-    return
+            raise SystemExit("No corresponding QATYPE")
+    else:
+        raise SystemExit("Mistake in LLM")
+    return inputsdict
 
 
 def main():
 
     db = create_or_load_db_faiss()
+    dbretriever = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.9})
+
     PROMPT=customize_prompt(PROMPTFILE) 
     chain_type_kwargs = {"prompt": PROMPT} 
 
-
     if LLMTYPE=="ChatGPT":
         
-        dbretriever = db.as_retriever(search_type="mmr", search_kwargs={"k":5, "lambda_mult":0.9})
-        PLChat = PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=True, streaming=True, callbacks=[StreamingStdOutCallbackHandler()])
-
-        inputsdict = {"query": thequery}
-        chain = RetrievalQA.from_chain_type(llm=PLChat, chain_type="stuff", retriever=dbretriever, chain_type_kwargs=chain_type_kwargs)
-
-                
+        theLLM = PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=False, streaming=True, callbacks=[StreamingStdOutCallbackHandler()])
+        chain = RetrievalQA.from_chain_type(llm=theLLM, chain_type="stuff", retriever=dbretriever, chain_type_kwargs=chain_type_kwargs)
+             
     elif LLMTYPE=="LLAMACPP": 
 
-        dbretriever = db.as_retriever(search_type="mmr", search_kwargs={"k":4, "lambda_mult":0.9})
-        llamamodel = LlamaCpp(model_path=MODEL_PATH, n_threads=6,  n_ctx=2048, max_tokens=1000,  temperature = 0.7, top_k = 50, top_p=0.75, last_n_tokens_size=256,  n_batch=1024, echo = True, repeat_penalty=1.17647, use_mmap=True, verbose=True, use_mlock=True,  callbacks=Streamcallbacks)
-   
-        if QATYPE =="AUTO":
+        theLLM = LlamaCpp(model_path=MODEL_PATH, n_threads=6,  n_ctx=2048, max_tokens=500,  temperature = 0.7, top_k = 50, top_p=0.75, last_n_tokens_size=256,  n_batch=1024, echo = True, repeat_penalty=1.17647, use_mmap=True, verbose=True, use_mlock=True,  callbacks=Streamcallbacks)
+        theLLM.client.verbose = False
 
-            inputsdict = {"query": thequery}
-            chain = RetrievalQA.from_chain_type(llm=llamamodel, chain_type="stuff",  retriever=dbretriever, chain_type_kwargs = {"prompt": PROMPT} )
+        if QATYPE =="AUTO": chain = RetrievalQA.from_chain_type(llm=theLLM, chain_type="stuff",  retriever=dbretriever, chain_type_kwargs=chain_type_kwargs)
+        elif QATYPE=="MANUAL": chain = LLMChain(llm=theLLM, prompt=PROMPT) 
+        else: raise SystemExit("No corresponding QATYPE")  
+    else: raise SystemExit("Mistake in LLM")
 
-        elif QATYPE=="MANUAL":
-      
-            context = dbretriever.get_relevant_documents(thequery)       
-            print(f"Context for {thequery} : ")
-            inputcontext=build_string_context(context)
-
-            inputsdict = {"context": inputcontext, "question": thequery}
-            chain = LLMChain(llm=llamamodel, prompt=PROMPT) 
-
-        elif QATYPE=="HYDE":
-
-            print("HYDE vanilla generation :")
-            with open(PROMPTFILEHYDE, 'r') as file:
-                prt = file.read()
-            PRT = PromptTemplate(template=prt, input_variables=["question"])
-            hydeChain = LLMChain(llm=llamamodel, prompt=PRT)
-            hydeEmbeddings = HypotheticalDocumentEmbedder(llm_chain=hydeChain, base_embeddings=embeddings_function())     
-            result = hydeEmbeddings.embed_query(thequery)
-
-
-            context =  db.max_marginal_relevance_search_by_vector(result, k=4, lambda_mult=0.9)
-            print(f"Context for {thequery} : ")
-            inputcontext=build_string_context(context)
-            
-            inputsdict = {"context": inputcontext, "question": thequery}
-            chain = LLMChain(llm=llamamodel, prompt=PROMPT) 
-        
-        else:
-            raise SystemExit("No corresponding QATYPE")
-        
-    else:
-        raise SystemExit("Mistake in LLM")
-
-
-    res= chain(inputsdict,return_only_outputs=True)
-
-    #go_and_answer(query1, qa)
     
+    if INTERACTIVEMODE:
+        while True:
+            query = input("\nEnter a query: ")
+            if query == "exit":
+                break
+            inputsdict=build_inputs(query, dbretriever)
+            res= chain(inputsdict,return_only_outputs=True)
+
+    else:
+        inputsdict=build_inputs(thequery, dbretriever)
+        res= chain(inputsdict,return_only_outputs=True)
+
     db = None
     exit
 

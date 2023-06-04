@@ -14,4 +14,3 @@ unstructured
 python-dotenv
 faiss-cpu
 promptlayer
-llama_index

@@ -3,7 +3,8 @@ Ressources/
 .chroma/
 db/
 db/*
-
+storage/
+llamaindex.log
 
 # OSX
 .DS_STORE

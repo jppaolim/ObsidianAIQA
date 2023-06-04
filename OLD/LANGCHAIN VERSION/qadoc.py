@@ -4,7 +4,7 @@ import os
 
 #from dotenv import load_dotenv
 
-from langchain.llms import OpenAI, LlamaCpp
+from langchain.llms import  LlamaCpp
 
 from langchain.chat_models import PromptLayerChatOpenAI
 from langchain.chat_models import ChatOpenAI
@@ -85,6 +85,9 @@ def main():
     PROMPT=customize_prompt(PROMPTFILE) 
     chain_type_kwargs = {"prompt": PROMPT} 
 
+
+
+    
     if LLMTYPE=="ChatGPT":
         
         theLLM = PromptLayerChatOpenAI(openai_api_key=OPENAI_KEY, temperature=0.1, max_tokens=2048, verbose=False, streaming=True, callbacks=[StreamingStdOutCallbackHandler()])
@@ -100,6 +103,11 @@ def main():
         else: raise SystemExit("No corresponding QATYPE")  
     else: raise SystemExit("Mistake in LLM")
 
+    if RUNVANILLA: 
+        with open(PROMPTFILEHYDE, 'r') as file:
+            prt = file.read()
+        PRT = PromptTemplate(template=prt, input_variables=["question"])
+        vanillachain = LLMChain(llm=theLLM, prompt=PRT)
     
     if INTERACTIVEMODE:
         while True:
@@ -108,6 +116,9 @@ def main():
                 break
             inputsdict=build_inputs(query, dbretriever)
             res= chain(inputsdict,return_only_outputs=True)
+            if RUNVANILLA: 
+                print("\nVanilla mode: \n")
+                vanillachain(query, return_only_outputs=True)
 
     else:
         inputsdict=build_inputs(thequery, dbretriever)

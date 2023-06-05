@@ -8,5 +8,5 @@ ASSISTANT : OK.
 USER : Then, I have gathered following new documents that might help me refine my article :   
 {context_msg} 
 ASSISTANT : OK.
-USER : If you feel this brings new interesting information, update the article. If not, keep the existing article. Don't add comments, just reply with the article. Keep the style adapted to social media : specific, but also crisp, clear, engaging and to the point. Keep it under 250 words. 
+USER : If you feel this brings new interesting information, update the article. If not, keep the existing article. Don't add comments, just reply with the article. Keep the style adapted to social media : specific, detailed but also crisp, clear and engaging.
 ASSISTANT:

@@ -14,9 +14,14 @@ OVERLAP = 120
 MODEL_PATH=os.environ.get("MODEL_PATH")
 PROMPTFILEQA=os.environ.get("PROMPTFILEQA")
 PROMPTFILEREFINE=os.environ.get("PROMPTFILEREFINE")
+PROMPTSUMMARY=os.environ.get("PROMPTSUMMARY")
+PROMPTINSERT=os.environ.get("PROMPTINSERT")
+PROMPTSELECT=os.environ.get("PROMPTSELECT")
+PROMPTSELECTMULTIPLE=os.environ.get("PROMPTSELECTMULTIPLE")
 QATYPE=os.environ.get("QATYPE")
 
 ## parameters False unless excplicitly set to True 
 BUILD_REFRESH_DB = (os.getenv('BUILD_REFRESH_DB', 'False') == 'True')
+BUILD_TREE = (os.getenv('BUILD_TREE', 'False') == 'True')
 INTERACTIVEMODE=(os.getenv('INTERACTIVEMODE', 'False') == 'True') 
 RUNVANILLA=(os.getenv('RUNVANILLA', 'False') == 'True') 

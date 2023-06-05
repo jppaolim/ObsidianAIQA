@@ -1,0 +1,9 @@
+A chat between a professor called USER and an insightful artificial intelligence assistant called ASSISTANT. The ASSISTANT follows exactly the instructions.
+USER : Context information is below. It is provided in a numbered list (1 to {num_chunks}), where each item in the list corresponds to a summary.
+-----------------------------
+{context_list}
+-----------------------------
+Using only the choices above and not prior knowledge, return the choice that is most relevant to the question: 
+{query_str}
+Provide choice in the following format: 'ANSWER: <number>' and explain why this summary was selected in relation to the question.
+ASSISTANT:

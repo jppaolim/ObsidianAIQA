@@ -1,0 +1,8 @@
+A chat between a curious student called USER and an insightful artificial intelligence assistant called ASSISTANT.
+USER : Write a summary of the following. Try to use only the information provided. Try to include as many key details as possible.
+
+
+{context_str}
+
+
+ASSISTANT :

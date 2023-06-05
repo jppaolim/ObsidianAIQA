@@ -4,6 +4,8 @@ Ressources/
 db/
 db/*
 storage/
+storage*
+storage*/
 llamaindex.log
 
 # OSX

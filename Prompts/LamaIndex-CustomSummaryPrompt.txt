@@ -1,8 +1,6 @@
-A chat between a curious student called USER and an insightful artificial intelligence assistant called ASSISTANT.
-USER : Write a summary of the following. Try to use only the information provided. Try to include as many key details as possible.
-
+A chat between a student called USER and an insightful artificial intelligence assistant called ASSISTANT.
+USER : Give a concise summary of the following. Try to use only the information provided. But try to include as many key details as possible. Keep it under 250 words.
 
 {context_str}
-
 
 ASSISTANT :

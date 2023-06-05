@@ -1,9 +1,13 @@
+thequery = "How a company can create competitive advantage with generative AI if everybody uses the same big model ?"
+
 import os
 import logging
 import sys
 
 
 from llama_index import (
+    GPTVectorStoreIndex, 
+    GPTTreeIndex,
     LangchainEmbedding,
     LLMPredictor, 
     ServiceContext, 
@@ -25,6 +29,10 @@ from langchain.llms import  LlamaCpp
 from llama_index.indices.document_summary import GPTDocumentSummaryIndex
 from llama_index.query_engine import RetrieverQueryEngine
 from llama_index.indices.document_summary import DocumentSummaryIndexEmbeddingRetriever
+
+from llama_index.retrievers import TreeSelectLeafEmbeddingRetriever
+from llama_index.query_engine import RetrieverQueryEngine
+
 
 # ****************  Load local var and utils
 from config import *
@@ -74,81 +82,115 @@ def main():
     llm.client.verbose= False
 
     llm_predictor = LLMPredictor(llm=llm)
+    node_parser=SimpleNodeParser(SentenceSplitter(chunk_size=CHUNK_SIZE_LLAMAINDEX, chunk_overlap=OVERLAP)) 
+
 
     service_context = ServiceContext.from_defaults(
         llm_predictor=llm_predictor,
         embed_model=embed_model,
         prompt_helper=PromptHelper(context_window=2048-100,   num_output=MAXTOKEN, chunk_overlap_ratio=0.1),
         chunk_size=CHUNK_SIZE_LLAMAINDEX, 
-        node_parser=SimpleNodeParser(SentenceSplitter(chunk_size=CHUNK_SIZE_LLAMAINDEX, chunk_overlap=OVERLAP)) 
+        node_parser=node_parser 
         )
     
     
     summary_template = Prompt(read_str_prompt(PROMPTSUMMARY))
-#    insert_prompt = Prompt(read_str_prompt(PROMPTINSERT))
+    insert_prompt = Prompt(read_str_prompt(PROMPTINSERT))
     qa_template = Prompt(read_str_prompt(PROMPTFILEQA))
     re_template = Prompt(read_str_prompt(PROMPTFILEREFINE))
-#    select_template = Prompt(read_str_prompt(PROMPTSELECT))
-#    select_template_multiple = Prompt(read_str_prompt(PROMPTSELECTMULTIPLE))
+    select_template = Prompt(read_str_prompt(PROMPTSELECT))
+    select_template_multiple = Prompt(read_str_prompt(PROMPTSELECTMULTIPLE))
 
-
-    response_synthesizer = ResponseSynthesizer.from_args(
-        response_mode="tree_summarize",
-        verbose=True,
-        text_qa_template=qa_template,
-        refine_template=re_template,
-        service_context=service_context
-    )
-        
     if BUILD_REFRESH_DB:
         documents = ObsidianReader(DOC_DIRECTORY).load_data()
         storage_context = StorageContext.from_defaults()
         storage_context.docstore.add_documents(documents)
-        
-        index = GPTDocumentSummaryIndex.from_documents(documents, storage_context=storage_context, service_context=service_context, response_synthesizer=response_synthesizer, summary_query=summary_template)
-        index.storage_context.persist(persist_dir="./storage") 
-
+        nodes = node_parser.get_nodes_from_documents(documents)
+        storage_context.persist(persist_dir="./storage")
     else:
         storage_context = StorageContext.from_defaults(persist_dir="./storage")
-        index = load_index_from_storage(storage_context, service_context=service_context)
+
+    if QATYPE=="SUMMARY":
+
+        response_synthesizer = ResponseSynthesizer.from_args(
+            response_mode="tree_summarize",
+            verbose=True,
+            text_qa_template=qa_template,
+            refine_template=re_template,
+            service_context=service_context
+        )
+
+        if BUILD_REFRESH_DB:
+            index_summary = GPTDocumentSummaryIndex(nodes, storage_context=storage_context, service_context=service_context, response_synthesizer=response_synthesizer, summary_query=summary_template)
+            index_summary.set_index_id = "summary"
+            index_summary.storage_context.persist(persist_dir="./storage") 
+
+        else:
+            index_summary = load_index_from_storage(storage_context, service_context=service_context, index_id="summary")
 
 
+        retriever = DocumentSummaryIndexEmbeddingRetriever(
+            index=index_summary,
+            similarity_top_k=6,
+            verbose=True
+        )      
 
-    retriever = DocumentSummaryIndexEmbeddingRetriever(
-        index=index,
-        similarity_top_k=4,
-        verbose=True
-        # choice_select_prompt=choice_select_prompt,
-        # choice_batch_size=choice_batch_size,
-        # format_node_batch_fn=format_node_batch_fn,
-        # parse_choice_select_answer_fn=parse_choice_select_answer_fn,
-        # service_context=service_context
-    )
+        query_engine = RetrieverQueryEngine(   
+            retriever=retriever,
+            response_synthesizer=response_synthesizer,
+        )
 
-    #response_synthesizer = ResponseSynthesizer.from_args(
-    #    response_mode="refine",
-    #    verbose=True,
-    #    text_qa_template=qa_template,
-    #    refine_template=re_template,
-    #    service_context=service_context
-    #)
-  
-    
+    elif QATYPE=="TREE":
+        if BUILD_REFRESH_DB:
+            index_tree = GPTTreeIndex.from_documents(documents, storage_context=storage_context, service_context=service_context, summary_template=summary_template , insert_prompt=insert_prompt)
+            index_tree.set_index_id = "tree"
+            index_tree.storage_context.persist(persist_dir="./storage") 
 
-    query_engine = RetrieverQueryEngine(
-        
-        retriever=retriever,
-        response_synthesizer=response_synthesizer,
-#        query_template=select_template,
-#        query_template_multiple = select_template_multiple,
-#        service_context=service_context
-    )
+        else:
+            index_tree = load_index_from_storage(storage_context, service_context=service_context, index_id="tree")
+   
+        retriever = TreeSelectLeafEmbeddingRetriever(
+            index=index_tree,
+            child_branch_factor=4,
+            query_template=select_template,
+            query_template_multiple = select_template_multiple,
+            verbose=True,
+            service_context=service_context
+        )
 
+        response_synthesizer = ResponseSynthesizer.from_args(
+            verbose=True,
+            text_qa_template=qa_template,
+            refine_template=re_template,
+            service_context=service_context
+        )
 
-    response  = query_engine.query("Can you build a moat with AI while everybody uses the same big model ?")
+        query_engine = RetrieverQueryEngine(
+            retriever=retriever,
+            response_synthesizer=response_synthesizer
+        )
+     
+
+    elif QATYPE=="VECTOR":
+        if BUILD_REFRESH_DB:
+            index = GPTVectorStoreIndex.from_documents(documents, storage_context=storage_context, service_context=service_context)
+            index.set_index_id = "vector"
+            index.storage_context.persist(persist_dir="./storage") 
+
+        else:
+            index = load_index_from_storage(storage_context, service_context=service_context, index_id="vector")
+
+        query_engine = index.as_query_engine(
+            verbose=True,
+            similarity_top_k=4,
+            text_qa_template=qa_template,
+            refine_template=re_template,
+            service_context=service_context
+        )
+
+    response  = query_engine.query(thequery)
 
     print(response)
 
 if __name__ == "__main__":
     main()
-

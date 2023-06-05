@@ -109,7 +109,8 @@ def main():
         storage_context.persist(persist_dir="./storage")
     else:
         storage_context = StorageContext.from_defaults(persist_dir="./storage")
-
+    
+    
     if QATYPE=="SUMMARY":
 
         response_synthesizer = ResponseSynthesizer.from_args(
@@ -127,7 +128,6 @@ def main():
 
         else:
             index_summary = load_index_from_storage(storage_context, service_context=service_context, index_id="summary")
-
 
         retriever = DocumentSummaryIndexEmbeddingRetriever(
             index=index_summary,

@@ -8,7 +8,7 @@ DOC_DIRECTORY = os.environ.get("DOC_DIRECTORY")
 ## embeddings parameter  >> instructor model : https://arxiv.org/pdf/2212.09741.pdf
 INSTRUCT_MODEL=os.environ.get("INSTRUCT_MODEL")
 CHUNK_SIZE_LLAMAINDEX=int(os.environ.get("CHUNK_SIZE_LLAMAINDEX"))
-OVERLAP = 120
+OVERLAP = 20
 
 ## llm and prompt 
 MODEL_PATH=os.environ.get("MODEL_PATH")

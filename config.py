@@ -21,7 +21,7 @@ PROMPTSELECTMULTIPLE=os.environ.get("PROMPTSELECTMULTIPLE")
 QATYPE=os.environ.get("QATYPE")
 
 ## parameters False unless excplicitly set to True 
-BUILD_REFRESH_DB = (os.getenv('BUILD_REFRESH_DB', 'False') == 'True')
+FORCE_REBUILD= (os.getenv('FORCE_REBUILD', 'False') == 'True')
 BUILD_TREE = (os.getenv('BUILD_TREE', 'False') == 'True')
 INTERACTIVEMODE=(os.getenv('INTERACTIVEMODE', 'False') == 'True') 
 RUNVANILLA=(os.getenv('RUNVANILLA', 'False') == 'True') 

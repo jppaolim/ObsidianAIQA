@@ -2,9 +2,23 @@ from llama_index.readers.schema.base import Document
 from llama_index.readers.file.markdown_reader import MarkdownReader
 from typing import Any, Dict, List, Optional, Tuple, cast
 import os
+import sys
+import logging
 from pathlib import Path
 from llama_index import     ObsidianReader
 
+from langchain.embeddings import HuggingFaceInstructEmbeddings
+from config import *
+
+
+def embeddings_function():
+    embed_instruction = "Represent the Wikipedia document for retrieval: "
+    query_instruction = "Represent the Wikipedia question for retrieving supporting documents : "
+    Instructembedding = HuggingFaceInstructEmbeddings(
+        model_name=INSTRUCT_MODEL, embed_instruction=embed_instruction, query_instruction=query_instruction)
+
+
+    return Instructembedding
 
 
 def read_str_prompt(filepath: str):
@@ -26,7 +40,8 @@ class MyObsidianReader(ObsidianReader):
             for filename in filenames:
                 if filename.endswith(".md"):
                     filepath = os.path.join(dirpath, filename)
-                    content = MyMDreader().load_data(Path(filepath),extra_info={"filename": filepath})
+                    #remove the extrainfo
+                    content = MyMDreader().load_data(Path(filepath))
                     docs.extend(content)
         return docs
 
@@ -48,4 +63,21 @@ class MyMDreader(MarkdownReader):
                 )
         return results
 
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging.INFO)
+stdout_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('llamaindex.log')
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+# Add the handlers to the logger
+logger.addHandler(file_handler)
+logger.addHandler(stdout_handler)
 

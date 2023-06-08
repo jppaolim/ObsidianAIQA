@@ -10,7 +10,25 @@ from llama_index import     ObsidianReader
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from config import *
 
+#Logging 
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging.INFO)
+stdout_handler.setFormatter(formatter)
+
+file_handler = logging.FileHandler('llamaindex.log')
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stdout_handler)
+
+
+#set up embedding INSTRUCTOR 
 def embeddings_function():
     embed_instruction = "Represent the Wikipedia document for retrieval: "
     query_instruction = "Represent the Wikipedia question for retrieving supporting documents : "
@@ -21,6 +39,7 @@ def embeddings_function():
     return Instructembedding
 
 
+#Utility to read the prompts 
 def read_str_prompt(filepath: str):
 
     with open(filepath, 'r') as file:
@@ -29,8 +48,7 @@ def read_str_prompt(filepath: str):
     return(template) 
 
 
-# custom class to add filename as doc_id et extra info d'ailleurs
-
+# custom Doc Reader class to add filename as doc_id et extra info d'ailleurs
 class MyObsidianReader(ObsidianReader):
   def load_data(self, *args: Any, **load_kwargs: Any) -> List[Document]:
         """Load data from the input directory."""
@@ -62,22 +80,3 @@ class MyMDreader(MarkdownReader):
                     Document(f"\n\n{header}\n{value}", doc_id= str(file), extra_info=extra_info)
                 )
         return results
-
-
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setLevel(logging.INFO)
-stdout_handler.setFormatter(formatter)
-
-file_handler = logging.FileHandler('llamaindex.log')
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(formatter)
-
-# Add the handlers to the logger
-logger.addHandler(file_handler)
-logger.addHandler(stdout_handler)
-

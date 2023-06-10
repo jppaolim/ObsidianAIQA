@@ -1,6 +1,3 @@
-
-
-
 ## Although there are some valid concerns, an AI moratorium would be misguided.
 
 [Robin Hanson](safari-reader://quillette.com/author/robin/)14 Apr 2023

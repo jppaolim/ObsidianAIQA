@@ -1,14 +1,19 @@
 from llama_index.readers.schema.base import Document
 from llama_index.readers.file.markdown_reader import MarkdownReader
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast, Sequence, Type, TypeVar
 import os
 import sys
 import logging
 from pathlib import Path
+from llama_index.storage.storage_context import StorageContext
+
 from llama_index import     ObsidianReader
 
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 from config import *
+
+from llama_index.indices.document_summary import DocumentSummaryIndex
+
 
 #Logging 
 logger = logging.getLogger()
@@ -16,16 +21,17 @@ logger.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-stdout_handler = logging.StreamHandler(sys.stdout)
-stdout_handler.setLevel(logging.INFO)
-stdout_handler.setFormatter(formatter)
+#stdout_handler = logging.StreamHandler(sys.stdout)
+#stdout_handler.setLevel(logging.INFO)
+#stdout_handler.setFormatter(formatter)
 
 file_handler = logging.FileHandler('llamaindex.log')
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
-logger.addHandler(stdout_handler)
+#logger.addHandler(stdout_handler)
+
 
 
 #set up embedding INSTRUCTOR 
@@ -47,6 +53,7 @@ def read_str_prompt(filepath: str):
 
     return(template) 
 
+summarydoc=read_str_prompt(PROMPTSUMMARYDOC)
 
 # custom Doc Reader class to add filename as doc_id et extra info d'ailleurs
 class MyObsidianReader(ObsidianReader):
@@ -80,3 +87,4 @@ class MyMDreader(MarkdownReader):
                     Document(f"\n\n{header}\n{value}", doc_id= str(file), extra_info=extra_info)
                 )
         return results
+

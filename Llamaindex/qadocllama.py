@@ -1,8 +1,9 @@
-thequery = "Should we be afraid of AI ?"
+thequery = "Gen AI systems are hard to control. Here are top ideas to still use them in a reliable way."
 
 import os
 import logging
 import sys
+import shutil
 
 from llama_index import (
     #VectorStoreIndex,
@@ -18,7 +19,8 @@ from llama_index import (
     ResponseSynthesizer,
     PromptHelper
 )
-
+from langchain.llms.fake import FakeListLLM 
+    
 
 from llama_index.logger import LlamaLogger
 
@@ -45,11 +47,11 @@ def build_queryengine(index_summary: DocumentSummaryIndex, qa_template:str, re_t
         #retriever to get top 4 relevant documents
         retriever = DocumentSummaryIndexEmbeddingRetriever(
             index=index_summary,
-            similarity_top_k=3,
+            similarity_top_k=4,
         )      
 
         #increase temperature and make a synthesis of the 4 documents
-        service_context.llm_predictor.llm.temperature=0.6
+        if not FAKELLM: service_context.llm_predictor.llm.temperature=0.6
         response_synthesizer = ResponseSynthesizer.from_args(
             response_mode="tree_summarize",
             use_async=False,
@@ -74,10 +76,24 @@ def main():
     embed_model = LangchainEmbedding(embeddings_function())
 
     # ***************  load LLLM     
-    llm = LlamaCpp(model_path=MODEL_PATH, n_threads=6,  n_ctx=2048, max_tokens=MAXTOKEN,  temperature = 0.3, top_k = 45, top_p=0.80, last_n_tokens_size=256,  n_batch=1024, repeat_penalty=1.17647, use_mmap=True, use_mlock=True)
-    llm.client.verbose= False
+    
+    if not FAKELLM:
+        llm = LlamaCpp(model_path=MODEL_PATH, n_threads=6,  n_ctx=2048, max_tokens=MAXTOKEN,  temperature = 0.3, top_k = 45, top_p=0.80, last_n_tokens_size=256,  n_batch=1024, repeat_penalty=1.17647, use_mmap=True, use_mlock=True)
+        llm.client.verbose= False
+    else :
+        responses=[
+        "This is a great summary 1",
+        "This is a great summary 2",
+        "This is a great summary 3",
+        "This is a great summary 4",
+        "This is a great summary 5" ,
+        "This is a great summary 6",
+        "This is a great summary 7",
+        "This is a great summary 8"
+        ]
 
-   
+        llm = FakeListLLM(responses=responses)
+
     llm_predictor = LLMPredictor(llm=llm)
 
     llama_debug = LlamaDebugHandler(print_trace_on_end=True)
@@ -98,7 +114,6 @@ def main():
     
         
     # ***************  Load Documents, Build Index 
-    documents = MyObsidianReader(DOC_DIRECTORY).load_data()
            
     DocBuildResponse_synthesizer = ResponseSynthesizer.from_args(
         response_mode="tree_summarize",
@@ -114,23 +129,31 @@ def main():
     indexfile = "./storage/index_store.json"
     missingfile = not (os.path.exists(docfile) and os.path.exists(indexfile))
 
+    documents = MyObsidianReader(DOC_DIRECTORY).load_data()
+
     #if something missing or "force build", we start from scratch 
     if (missingfile or FORCE_REBUILD):
-        #todo : rm dir existing 
+ 
+        if os.path.exists("./storage"):
+            shutil.rmtree("./storage")
         storage_context = StorageContext.from_defaults()
         storage_context.docstore.add_documents(documents)
+ 
         index_summary = DocumentSummaryIndex.from_documents(documents, storage_context=storage_context, service_context=service_context,
             response_synthesizer=DocBuildResponse_synthesizer,summary_query=Prompt(read_str_prompt(PROMPTSUMMARYDOC)) )
+       
+        index_summary.set_index_id("ObsidianSummary")
         index_summary.storage_context.persist(persist_dir="./storage") 
-
+      
     #if we have something we refresh 
     else:
         storage_context = StorageContext.from_defaults(persist_dir="./storage")
-        index_summary = load_index_from_storage(storage_context, service_context=service_context, response_synthesizer=DocBuildResponse_synthesizer,summary_query=Prompt(read_str_prompt(PROMPTSUMMARYDOC))) 
-        index_summary.refresh_ref_docs(documents,
-            update_kwargs={"delete_kwargs": {'delete_from_docstore': True}}
-            )
-        index_summary.storage_context.persist(persist_dir="./storage") 
+        index_summary = load_index_from_storage(storage_context, index_id="ObsidianSummary", service_context=service_context, response_synthesizer=DocBuildResponse_synthesizer,summary_query=Prompt(read_str_prompt(PROMPTSUMMARYDOC))) 
+        
+                 #index_summary.refresh_ref_docs(documents,
+        #    update_kwargs={"delete_kwargs": {'delete_from_docstore': True}}
+        #)
+        #index_summary.storage_context.persist(persist_dir="./storage") 
 
 
     # ***************  Make the query with the real good templates 
@@ -142,10 +165,6 @@ def main():
 
     response  = query_engine.query(thequery)
     print(response)
-
-    #for idx, item in enumerate(service_context.llama_logger.get_logs()):
-    #    for key, value in item.items():
-    #        print(f"{key}: {value}\n") 
     
     
 if __name__ == "__main__":

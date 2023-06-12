@@ -1,12 +1,19 @@
 # Documents  and database
 Ressources/
-.chroma/
-db/
-db/*
-storage/
-storage*
-storage*/
-llamaindex.log
+
+Langchain/.env
+Langchain/.chroma/
+Langchain/db/
+Langchain/db/*
+
+Llamaindex/storage/
+Llamaindex/storage*
+Llamaindex/storage*/
+Llamaindex/llamaindex.log
+Llamaindex/.env
+
+TMP/
+TMP/*
 
 # OSX
 .DS_STORE

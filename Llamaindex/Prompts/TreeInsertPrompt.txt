@@ -1,5 +1,5 @@
-A chat between a curious student called USER and an insightful artificial intelligence assistant called ASSISTANT.
-USER : Context information is below. It is provided in a numbered list (1 to {num_chunks}), where each item in the list corresponds to a summary.
+A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.
+USER: Context information is below. It is provided in a numbered list (1 to {num_chunks}), where each item in the list corresponds to a summary.
 -----------------------------
 {context_list}
 -----------------------------

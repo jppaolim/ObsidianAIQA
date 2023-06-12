@@ -26,8 +26,7 @@ Streamcallbacks = [StreamingStdOutCallbackHandler()]
 
 # ****************  Load everything 
 from config import *
-from embed import embeddings_function, create_or_load_db_faiss
-from utils import build_string_context
+from utils import build_string_context, embeddings_function, create_or_load_db_faiss
 
 
 # ****************  Prompt Custom 

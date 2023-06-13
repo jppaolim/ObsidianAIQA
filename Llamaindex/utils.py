@@ -1,23 +1,13 @@
-from llama_index.readers.schema.base import Document
-from llama_index.readers.file.markdown_reader import MarkdownReader
-from typing import Any, Dict, List, Optional, Tuple, cast, Sequence, Type, TypeVar
 import os
 import sys
-import logging
-from pathlib import Path
-from llama_index.storage.storage_context import StorageContext
 
-from llama_index import     ObsidianReader
-
-from langchain.embeddings import HuggingFaceInstructEmbeddings
 from config import *
-
-from llama_index.indices.document_summary import DocumentSummaryIndex
 
 
 #Logging 
+import logging
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger.setLevel(LOGLEVEL)
 
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
@@ -25,7 +15,7 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 #stdout_handler.setLevel(logging.INFO)
 #stdout_handler.setFormatter(formatter)
 
-file_handler = logging.FileHandler('llamaindex.log')
+file_handler = logging.FileHandler('ouput.log')
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
 
@@ -35,17 +25,19 @@ logger.addHandler(file_handler)
 
 
 #set up embedding INSTRUCTOR 
+from langchain.embeddings import HuggingFaceInstructEmbeddings
+
 def embeddings_function():
     embed_instruction = "Represent the Wikipedia document for retrieval: "
     query_instruction = "Represent the Wikipedia question for retrieving supporting documents : "
     Instructembedding = HuggingFaceInstructEmbeddings(
         model_name=INSTRUCT_MODEL, embed_instruction=embed_instruction, query_instruction=query_instruction)
-
-
     return Instructembedding
 
 
 #Utility to read the prompts 
+from pathlib import Path
+
 def read_str_prompt(filepath: str):
 
     with open(filepath, 'r') as file:
@@ -53,9 +45,14 @@ def read_str_prompt(filepath: str):
 
     return(template) 
 
-summarydoc=read_str_prompt(PROMPTSUMMARYDOC)
+
 
 # custom Doc Reader class to add filename as doc_id et extra info d'ailleurs
+from llama_index import     ObsidianReader
+from llama_index.readers.schema.base import Document
+from llama_index.readers.file.markdown_reader import MarkdownReader
+from typing import Any, Dict, List, Optional, Tuple, cast, Sequence, Type, TypeVar
+
 class MyObsidianReader(ObsidianReader):
   def load_data(self, *args: Any, **load_kwargs: Any) -> List[Document]:
         """Load data from the input directory."""

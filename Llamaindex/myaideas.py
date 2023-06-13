@@ -1,9 +1,9 @@
-thequery = "Gen AI systems are hard to control. Here are top ideas to still use them in a reliable way."
-
 import os
 import logging
 import sys
 import shutil
+import argparse
+
 
 from llama_index import (
     #VectorStoreIndex,
@@ -39,6 +39,7 @@ from llama_index.callbacks import CallbackManager, LlamaDebugHandler, CBEventTyp
 from config import *
 from utils import read_str_prompt, MyObsidianReader, logger, embeddings_function
 
+summarydoc=read_str_prompt(PROMPTSUMMARYDOC)
 
 # *************** Query engine 
 
@@ -71,7 +72,7 @@ def build_queryengine(index_summary: DocumentSummaryIndex, qa_template:str, re_t
 
 # *************** MAIN LOOP 
 
-def main():
+def main(thequery: str):
 
     embed_model = LangchainEmbedding(embeddings_function())
 
@@ -106,8 +107,8 @@ def main():
         llm_predictor=llm_predictor,
         embed_model=embed_model,
         prompt_helper=PromptHelper(context_window=2048-150,   num_output=MAXTOKEN, chunk_overlap_ratio=0.1),
-        chunk_size=CHUNK_SIZE_LLAMAINDEX, 
-        node_parser=SimpleNodeParser(SentenceSplitter(chunk_size=CHUNK_SIZE_LLAMAINDEX, chunk_overlap=OVERLAP))  ,
+        chunk_size=CHUNK_SIZE, 
+        node_parser=SimpleNodeParser(SentenceSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=OVERLAP))  ,
         llama_logger=llama_logger,
         callback_manager=callback_manager
         )
@@ -168,4 +169,7 @@ def main():
     
     
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-query", type=str, required=True, help="Query string to process")
+    args = parser.parse_args()
+    main(args.query)

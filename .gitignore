@@ -1,16 +1,18 @@
 # Documents  and database
 Ressources/
 
+
 Langchain/.env
 Langchain/.chroma/
 Langchain/db/
 Langchain/db/*
+Langchain/db*
+Langchain/*.log
 
-Llamaindex/storage/
-Llamaindex/storage*
-Llamaindex/storage*/
-Llamaindex/llamaindex.log
 Llamaindex/.env
+Llamaindex/db*/
+Llamaindex/*.log
+
 
 TMP/
 TMP/*

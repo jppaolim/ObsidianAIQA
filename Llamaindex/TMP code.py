@@ -1,3 +1,50 @@
+
+DS UTILS / 
+import time
+
+def create_custom_uuid():
+    # Get the current time in milliseconds
+    timestamp = int(time.time()*1000)
+
+    # Convert it to hexadecimal
+    timestamp_hex = hex(timestamp)[2:]
+
+    # Generate a random UUID
+    random_uuid = uuid.uuid4().hex
+
+    # Combine the timestamp with the random UUID, and insert hyphens
+    # to make it look like a typical UUID
+    custom_uuid = timestamp_hex + random_uuid[len(timestamp_hex):]
+    custom_uuid = '-'.join([custom_uuid[i:i+4] for i in range(0, len(custom_uuid), 4)])
+
+    return custom_uuid
+
+
+#def get_new_id(d: Set) -> str:
+#    """Get a new ID."""
+#    while True:
+#        new_id = str(uuid.uuid4())
+#        if new_id not in d:
+#            break
+#    return new_id
+
+
+def get_new_id(d: Set) -> str:
+    """Get a new ID."""
+    while True:
+        new_id = str(create_custom_uuid())
+        if new_id not in d:
+            break
+    return new_id
+
+
+
+DS /opt/homebrew/Caskroom/miniforge/base/envs/ObsidianAIQA/lib/python3.10/site-packages/llama_index/indices/postprocessor/node.py 
+        sorted_nodes = sorted(all_nodes.values(), key=lambda x: x.node.get_doc_id(), reverse=True)
+
+
+
+
 CE QUIO CHANGE C'EST DOC SUMMARY INDEX  base.py
 
     def __init__(
@@ -142,3 +189,45 @@ class MyDocumentSummaryIndex(DocumentSummaryIndex):
             summary_query=summary_query,
             **kwargs,
         )
+
+
+
+# custom Doc Reader class to add filename as doc_id et extra info d'ailleurs
+from llama_index import     ObsidianReader
+from llama_index.readers.schema.base import Document
+from llama_index.readers.file.markdown_reader import MarkdownReader
+from typing import Any, Dict, List, Optional, Tuple, cast, Sequence, Type, TypeVar
+
+class MyObsidianReader(ObsidianReader):
+  def load_data(self, *args: Any, **load_kwargs: Any) -> List[Document]:
+        """Load data from the input directory."""
+        docs: List[Document] = []
+        for dirpath, dirnames, filenames in os.walk(self.input_dir):
+            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+            for filename in filenames:
+                if filename.endswith(".md"):
+                    filepath = os.path.join(dirpath, filename)
+                    #remove the extrainfo
+                    content = MyMDreader().load_data(Path(filepath))
+                    docs.extend(content)
+        return docs
+
+
+class MyMDreader(MarkdownReader):
+    def load_data(
+        self, file: Path, extra_info: Optional[Dict] = None
+    ) -> List[Document]:
+        """Parse file into string."""
+        tups = self.parse_tups(file)
+        results = []
+        # TODO: don't include headers right now
+        for idx, tup in enumerate(tups):
+          header=tup[0]
+          value = tup[1]
+          if header is None:
+            results.append(Document(value, doc_id= f"{str(file)}_part_{idx}",extra_info=extra_info))
+        else:
+            results.append(
+                Document(f"\n\n{header}\n{value}", doc_id=f"{str(file)}_part_{idx}", extra_info=extra_info)
+            )
+        return results

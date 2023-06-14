@@ -4,26 +4,6 @@ import sys
 from config import *
 
 
-#Logging 
-import logging
-logger = logging.getLogger()
-logger.setLevel(LOGLEVEL)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-#stdout_handler = logging.StreamHandler(sys.stdout)
-#stdout_handler.setLevel(logging.INFO)
-#stdout_handler.setFormatter(formatter)
-
-file_handler = logging.FileHandler('ouput.log')
-file_handler.setLevel(logging.DEBUG)
-file_handler.setFormatter(formatter)
-
-logger.addHandler(file_handler)
-#logger.addHandler(stdout_handler)
-
-
-
 #set up embedding INSTRUCTOR 
 from langchain.embeddings import HuggingFaceInstructEmbeddings
 
@@ -44,44 +24,48 @@ def read_str_prompt(filepath: str):
             template = file.read()
 
     return(template) 
+#summarydoc=read_str_prompt(PROMPTSUMMARYDOC)
 
 
 
-# custom Doc Reader class to add filename as doc_id et extra info d'ailleurs
-from llama_index import     ObsidianReader
-from llama_index.readers.schema.base import Document
-from llama_index.readers.file.markdown_reader import MarkdownReader
-from typing import Any, Dict, List, Optional, Tuple, cast, Sequence, Type, TypeVar
-
-class MyObsidianReader(ObsidianReader):
-  def load_data(self, *args: Any, **load_kwargs: Any) -> List[Document]:
-        """Load data from the input directory."""
-        docs: List[Document] = []
-        for dirpath, dirnames, filenames in os.walk(self.input_dir):
-            dirnames[:] = [d for d in dirnames if not d.startswith(".")]
-            for filename in filenames:
-                if filename.endswith(".md"):
-                    filepath = os.path.join(dirpath, filename)
-                    #remove the extrainfo
-                    content = MyMDreader().load_data(Path(filepath))
-                    docs.extend(content)
-        return docs
+from llama_index.indices.postprocessor import (
+    LLMRerank
+)
+from llama_index.indices.query.schema import QueryBundle
+from llama_index import (
+    VectorStoreIndex,
+    ServiceContext,
+    Prompt
+    )
+from llama_index.retrievers import VectorIndexRetriever
 
 
-class MyMDreader(MarkdownReader):
-    def load_data(
-        self, file: Path, extra_info: Optional[Dict] = None
-    ) -> List[Document]:
-        """Parse file into string."""
-        tups = self.parse_tups(file)
-        results = []
-        # TODO: don't include headers right now
-        for header, value in tups:
-            if header is None:
-                results.append(Document(value, doc_id= str(file),extra_info=extra_info))
-            else:
-                results.append(
-                    Document(f"\n\n{header}\n{value}", doc_id= str(file), extra_info=extra_info)
-                )
-        return results
+def get_retrieved_nodes(query_str:str, index: VectorStoreIndex, service_context: ServiceContext, vector_top_k=10, reranker_top_n=2, with_reranker=False):
+    query_bundle = QueryBundle(query_str)
+    # configure retriever
+    retriever = VectorIndexRetriever(
+        index=index, 
+        similarity_top_k=vector_top_k,
+    )
+    retrieved_nodes = retriever.retrieve(query_bundle)
 
+    if with_reranker:
+        # configure reranker
+        reranker = LLMRerank(choice_batch_size=2, top_n=reranker_top_n, service_context=service_context, choice_select_prompt=Prompt(read_str_prompt(PROMPTRANK)))
+        retrieved_nodes = reranker.postprocess_nodes(retrieved_nodes, query_bundle)
+    
+    return retrieved_nodes
+
+
+def visualize_retrieved_nodes(nodes) -> None:
+    result_dicts = []
+    for node in nodes:
+        print(f'\n\n****Score****: {node.score}\n****Node text****\n: {node.node.get_text()}'
+        )
+    #    result_dict = {
+    #        "Score": node.score,
+    #        "Text": node.node.get_text()
+    #    }
+    #    result_dicts.append(result_dict)
+        
+    #pretty_print(pd.DataFrame(result_dicts))

@@ -6,8 +6,8 @@ load_dotenv()
 
 
 ## SRC DOC
-DOC_DIRECTORY = "../RessourcesDummy"
-#DOC_DIRECTORY = "./Ressources"
+#DOC_DIRECTORY = "../RessourcesDummy"
+DOC_DIRECTORY = "../Ressources"
 
 ## STORAGE
 PERSIST_DIRECTORY="./db"

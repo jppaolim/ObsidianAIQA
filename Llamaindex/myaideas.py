@@ -167,7 +167,7 @@ def main(thequery: str):
     )   
 
     #increase temperature and make a synthesis of the 4 documents
-    if not FAKELLM: service_context.llm_predictor.llm.temperature=0.6
+    #if not FAKELLM: service_context.llm_predictor.llm.temperature=0.6
     response_synthesizer = ResponseSynthesizer.from_args(
         response_mode="tree_summarize",
         use_async=False,

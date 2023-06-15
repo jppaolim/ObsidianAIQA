@@ -3,7 +3,7 @@ USER: Here is a topic I am studying:
 --------------
 {query_str}
 --------------
-Using bullet points summarize the key points of following text that are relevant to the topic. Try to keep key examples so to remain specific. Each bullet point should be understandable without context. Keep the total under 250 words. 
+Give a crisp and concise summary of following text. Use only the information provided and relevant to the topic. Use bullet points if needed. Just reply with the summary. Keep it under 250 words. 
 --------------
 {context_str}
 --------------

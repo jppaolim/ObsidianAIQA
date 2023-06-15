@@ -7,8 +7,9 @@ I have already done following research summary:
 --------------
 {existing_answer}
 --------------
-Update or add the bullet points of the resserach summary with the key points of following new documents that are relevant to the topic. Try to keep key examples so to remain specific. Each bullet point should be understandable without context.  Keep the total under 300 words. If too long, remove the bullet points that are not interesting.
+Now, I have gathered following new documents:   
 --------------
 {context_msg} 
 --------------
+Update the research summary taking into account these new documents. Don't add comments, just reply with the summary. Use bullet points if needed, keep it under 250 words.
 ASSISTANT:

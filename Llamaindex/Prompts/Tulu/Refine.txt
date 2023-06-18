@@ -1,5 +1,5 @@
-A chat between a curious user and an artificial intelligence assistant. The assistant gives helpful, detailed, and polite answers to the user's questions.
-USER: Here is a topic I am studying: {query_str}. I have prepared a draft list of bullet points information related to the topic:
+<|user|>
+Here is a topic I am studying: {query_str}. I have prepared a draft list of bullet points information related to the topic:
 
 {existing_answer}
 
@@ -7,4 +7,4 @@ I have receveived following new document. Using bullet points summarize its key 
 
 {context_msg} 
 
-ASSISTANT:
+<|assistant|>

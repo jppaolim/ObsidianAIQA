@@ -19,15 +19,14 @@ TOKENIZERS_PARALLELISM=False
 CHUNK_SIZE=800
 #MAXTOKEN = 384
 MAXTOKEN = 512
-OVERLAP = 20
+OVERLAP = 80 # A METTRE A 80 soit 10% du chunk pr 800
 
 ## llm 
-OPENAI_KEY=os.environ.get("OPENAI_KEY")
-PROMPTLAYER_API_KEY=os.environ.get("PROMPTLAYER_API_KEY")
-MODEL="gpt-3.5-turbo"
 BASE_MODELPATH="../models/"
 #MODEL_PATH=BASE_MODELPATH + "Wizard-Vicuna-7B-Uncensored.ggmlv3.q5_1.bin"
 MODEL_PATH=BASE_MODELPATH + "WizardLM-13B-1.0.ggmlv3.q4_0.bin" 
+#MODEL_PATH=BASE_MODELPATH + "robin-13b.ggmlv3.q4_0.bin"
+
 
 ## PROMTPS
 BASE_PROMPTPATH="./Prompts/"

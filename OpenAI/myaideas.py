@@ -7,13 +7,11 @@ import argparse
 
 from llama_index import (
     VectorStoreIndex,
-    ListIndex,
-    LangchainEmbedding,
+    OpenAIEmbedding,
     LLMPredictor, 
     ServiceContext, 
     StorageContext, 
     load_index_from_storage,
-    ObsidianReader,
     Prompt,
     ResponseSynthesizer,
     PromptHelper
@@ -24,23 +22,20 @@ from langchain.llms.fake import FakeListLLM
 from llama_index.node_parser.simple import SimpleNodeParser
 from llama_index.langchain_helpers.text_splitter import SentenceSplitter
 
-from langchain.llms import  LlamaCpp
+from langchain.chat_models import ChatOpenAI
 
 from llama_index.retrievers import VectorIndexRetriever
 from llama_index.query_engine import RetrieverQueryEngine
-#from llama_index.indices.document_summary import DocumentSummaryIndexEmbeddingRetriever
 
 from llama_index.logger import LlamaLogger
 from llama_index.callbacks import CallbackManager, LlamaDebugHandler, CBEventType
 
 
-
-
 # ****************  Load local var and utils
 from config import *
-from utils import read_str_prompt, embeddings_function
+from utils import read_str_prompt
 
-  
+
     
 # *************** MAIN LOOP 
 
@@ -69,15 +64,13 @@ def main(thequery: str):
     llama_logger = LlamaLogger()
 
 
-    # ***************  Embedding
-    embed_model = LangchainEmbedding(embeddings_function())
-
     # ***************  LLM     
-    
+    import openai
+    openai.api_key=os.getenv('OPENAI_API_KEY')
+
     if not FAKELLM:
-        llm = LlamaCpp(model_path=MODEL_PATH, n_threads=6,  n_ctx=2048, max_tokens=MAXTOKEN,  temperature = 0.3, top_k = 45, top_p=0.30, last_n_tokens_size=256,  n_batch=1024, repeat_penalty=1.17647, use_mmap=True, use_mlock=True)
-        llm.client.verbose= False
-    
+        llm=ChatOpenAI(temperature=0, model_name=MODEL, streaming=False) 
+      
     else :
         responses=[
         "This is a great summary 1",
@@ -93,21 +86,21 @@ def main(thequery: str):
         llm = FakeListLLM(responses=responses)
 
     llm_predictor = LLMPredictor(llm=llm)
-    
+
     # ***************  Service Context 
     #   
     service_context = ServiceContext.from_defaults(
         llm_predictor=llm_predictor,
-        embed_model=embed_model,
-        prompt_helper=PromptHelper(context_window=2048-150,   num_output=MAXTOKEN, chunk_overlap_ratio=0.1),
-        chunk_size=CHUNK_SIZE, 
-        node_parser=SimpleNodeParser(SentenceSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=OVERLAP,))  ,
+        prompt_helper=PromptHelper(context_window=4097-150,   num_output=MAXTOKEN, chunk_overlap_ratio=0.5),
+        chunk_size=CHUNK_SIZE,
+        embed_model= OpenAIEmbedding(openai_api_key=OPENAI_API_KEY),
+        node_parser=SimpleNodeParser(SentenceSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=OVERLAP)),
         llama_logger=llama_logger,
         callback_manager=callback_manager
         )
     
-    from llama_index import set_global_service_context
-    set_global_service_context(service_context) 
+    #from llama_index import set_global_service_context
+    #set_global_service_context(service_context) 
         
     # ***************  Load Documents, Build Index 
            
@@ -118,8 +111,6 @@ def main(thequery: str):
     from llama_index import  SimpleDirectoryReader
 
     documents = SimpleDirectoryReader(input_dir=DOC_DIRECTORY, recursive=True, filename_as_id=True).load_data()
-    #documents = MyObsidianReader(DOC_DIRECTORY).load_data()
-
 
 
     #if something missing or "force build", we start from scratch 
@@ -148,60 +139,78 @@ def main(thequery: str):
 
     # ***************  Make the query with the real good templates 
 
-    qa_template = Prompt(read_str_prompt(PROMPTFILEQA))
-    re_template = Prompt(read_str_prompt(PROMPTFILEREFINE))
+    #qa_template = Prompt(read_str_prompt(PROMPTFILEQA))
+    #re_template = Prompt(read_str_prompt(PROMPTFILEREFINE))
 
-    #retrevied_nodes = get_retrieved_nodes(thequery, index_vec, service_context, vector_top_k=5, with_reranker=False)
-    #visualize_retrieved_nodes(retrevied_nodes)
+    from langchain.prompts.chat import (
+        AIMessagePromptTemplate,
+        ChatPromptTemplate,
+        HumanMessagePromptTemplate,
+    )
 
-    #query_engine=build_queryengine(index_vec,qa_template,re_template,service_context)
+    from llama_index.prompts.prompts import RefinePrompt, QuestionAnswerPrompt
+
+    CHAT_REFINE_PROMPT_TMPL_MSGS = [
+
+        HumanMessagePromptTemplate.from_template(
+        "Here is a topic I am studying: \n"
+        "---------------------\n"
+        "{query_str}"
+        "\n---------------------\n"
+        "I have prepared a draft list of bullet points information related to the topic:\n"
+        "{existing_answer}\n"
+        "I have receveived following new document. Using bullet points summarize its key points that are relevant to the topic and update the draft list accordingly.\n"
+        "Bullet points should be crisp and specific but each bullet point should be understandable without context. Try to keep key examples. Here is the new document:\n"
+        "---------------------\n"
+        "{context_msg}"
+        "\n---------------------\n"
+        ),
+        ]
+       
+    test="Bullet points should be crisp, short, specific but each bullet point should be understandable without context. Here is the new document:"
+      
+    CHAT_REFINE_PROMPT_LC = ChatPromptTemplate.from_messages(CHAT_REFINE_PROMPT_TMPL_MSGS)
+    CHAT_REFINE_PROMPT = RefinePrompt.from_langchain_prompt(CHAT_REFINE_PROMPT_LC)
+
+    # Text QA templates
+    DEFAULT_TEXT_QA_PROMPT_TMPL_MSGS =  [
+        HumanMessagePromptTemplate.from_template(
+        "Here is a topic I am studying: \n"
+        "---------------------\n"
+        "{query_str}"
+        "\n---------------------\n"
+        "Using bullet points summarize the key points of following text that are relevant to the topic. Bullet points should be crisp and specific but each bullet point should be understandable without context. Try to keep key examples. \n"
+        "Answer with the only bullet points relevant to the topic, no any other consideration.\n"
+        "---------------------\n"
+        "{context_str}"
+        "\n---------------------\n"
+        ),
+        ]
+    
+    TEXT_QA_TEMPLATE_LC = ChatPromptTemplate.from_messages(DEFAULT_TEXT_QA_PROMPT_TMPL_MSGS)
+    TEXT_QA_TEMPLATE = QuestionAnswerPrompt.from_langchain_prompt(TEXT_QA_TEMPLATE_LC)
 
     from llama_index.indices.postprocessor import PrevNextNodePostprocessor
  
     docstore=storage_context.docstore
     node_postprocessor = PrevNextNodePostprocessor (docstore=docstore, num_nodes=1, mode="both")
+ 
 
-    retriever = VectorIndexRetriever (
-        index=index_vec,
-        similarity_top_k=6,
-
-    )   
-
-    #increase temperature and make a synthesis of the 4 documents
-    #if not FAKELLM: service_context.llm_predictor.llm.temperature=0.6
-    response_synthesizer = ResponseSynthesizer.from_args(
-        response_mode="tree_summarize",
-        use_async=False,
-        verbose=True,
-        text_qa_template=qa_template,
-        refine_template=re_template,
-        service_context=service_context,
+    query_engine = index_vec.as_query_engine (
+        verbose=True,  
+        similarity_top_k=5,
+        text_qa_template=TEXT_QA_TEMPLATE,
+        refine_template=CHAT_REFINE_PROMPT,
+        response_mode='tree_summarize',
         response_kwargs={'num_children': 2},
-        node_postprocessors=[node_postprocessor]
-
-    )
-
-
-    query_engine = RetrieverQueryEngine(   
-        retriever=retriever,
-        response_synthesizer=response_synthesizer,
-    )
-
+        service_context=service_context,
+        node_postprocessors=[node_postprocessor],
+        #streaming=True
     
-    #query_engine = index_vec.as_query_engine(   
-    #    similarity_top_k=4,
-    #    node_postprocessors=[node_postprocessor],
-    #    use_async=False,
-    #    text_qa_template=qa_template,
-    #    refine_template=re_template,
-    #    response_kwargs={'num_children': 3},
-    #    response_mode="tree_summarize"
-    #)
-
+    )
 
     response  = query_engine.query(thequery)
     print(response)
-
 
     
 if __name__ == "__main__":
